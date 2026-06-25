@@ -1,0 +1,107 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* =========================================================================
+   THE SUPER ONE — Dieter Rams-inspired design system
+   原則：少即是多 · 功能優先 · 誠實 · 克制 · 系統化 · 長壽中性
+   表面語彙（Vitsœ）：中性灰「層架」承載白色「紙頁」
+   accent = Braun 功能橙紅，只做訊號，不做裝飾
+   ========================================================================= */
+
+:root {
+  /* ── 表面 Surfaces ── */
+  --bg: #d9d9d9;        /* 中性灰 — 頁面 / 框架 */
+  --surface: #ffffff;    /* 白 — 閱讀 / 卡片 */
+  --surface-2: #f2f2f0;  /* 微內凹 */
+
+  /* ── 墨 Ink ── */
+  --fg: #111111;         /* 近黑 — 內文 */
+  --fg-strong: #000000;  /* 純黑 — 標題 */
+  --muted: #6b6b6b;      /* 次級文字 */
+  --metal: #8a8f95;      /* 金屬灰 — 標籤 / meta */
+
+  /* ── 強調 Accent（Braun 功能橙紅，只做功能訊號）── */
+  --accent: #ff4b33;
+  --accent-ink: #d83a23; /* 白底上的可讀變體 */
+
+  /* ── 線 Lines ── */
+  --line: rgba(0, 0, 0, 0.12);
+  --line-strong: rgba(0, 0, 0, 0.24);
+
+  /* ── 幾何 Geometry（近乎直角，像產品控制件）── */
+  --radius: 2px;
+  --reading: 66ch; /* 正文最佳欄寬 */
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-fg-strong: var(--fg-strong);
+  --color-muted: var(--muted);
+  --color-metal: var(--metal);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-line: var(--line);
+
+  --radius-rams: var(--radius);
+
+  /* 系統字：不引入 Google Fonts，沿用平台 grotesque + PingFang TC */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue",
+    "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 功能性標籤 / eyebrow（Braun 儀表標示風）── */
+.eyebrow {
+  font-size: 0.6875rem; /* 11px */
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--metal);
+}
+
+/* ── 靜態 live 標記（取代脈動：Rams 不做無謂動態）── */
+.live-mark {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+/* =========================================================================
+   繁中長文閱讀優化（principle: useful / understandable）
+   ========================================================================= */
+.prose-zh {
+  line-height: 1.9;
+  letter-spacing: 0.01em;
+  word-break: break-word;
+}
+.prose-zh :where(h2) {
+  margin-top: 2.4em;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+.prose-zh :where(h3) {
+  letter-spacing: 0.02em;
+}
+.prose-zh :where(pre) {
+  line-height: 1.6;
+}
+/* blockquote 改為左側功能線，不用引號裝飾 */
+.prose-zh :where(blockquote) {
+  border-left: 3px solid var(--accent);
+  font-style: normal;
+  color: var(--fg);
+}
