@@ -1,41 +1,46 @@
 #!/usr/bin/env python3
-"""Writing in Public 修訂記錄（AI LEAN STARTUP）。
+"""Writing in Public 發布（AI LEAN STARTUP）—— 方法二：Obsidian 源稿 → 網站。
 
-預設 record-only：對既有 content/book/<slug>.mdx
-  - 保留 frontmatter（title/stage/chapter/summary/status，除非 --status 覆寫）
-  - 保留既有 revisions，最後「追加」一筆 {今天, 變更內容}——不覆寫歷史
-  - 內文「不動」（網站 .mdx 視為真相來源）
+真相來源＝Obsidian 的「網站源稿」資料夾（每章一個帶版本編號的乾淨稿）：
+  ~/IDreamAIWorks/AI LEAN STARTUP 電子書/網站源稿/<slug>_網站精修版_vN.md
+腳本自動挑「最高版本號」那一份。
+
+預設行為（sync）：對 content/book/<slug>.mdx
+  - 從源稿重生內文（移除頂部 H1 與源稿 frontmatter）
+  - 保留 .mdx 既有 frontmatter（title/stage/chapter/summary/status，除非 --status 覆寫）
+  - 保留既有 revisions，追加一筆 {今天, 變更內容}——不覆寫歷史
   - 更新 updated 為今天
 
-為什麼預設不從 Obsidian 同步：本書的 Obsidian 源稿是「一句一行」的草稿，
-網站 .mdx 已是「合併成段落」的精修版。從 Obsidian 重生會把精修內容打回草稿。
-故內容請直接改 .mdx；本腳本只負責「留下公開修訂紀錄」。
+日常流程：
+  1. 在 Obsidian 改 網站源稿/<slug>_網站精修版_vN.md（要做大改版就另存 v(N+1)）
+  2. python3 scripts/publish-chapter.py <slug> "<變更內容>"
+  3. git add -A && git commit && git push（Vercel 自動部署）
 
-進階：--sync 才會從 Obsidian 重生內文（會覆蓋網站精修版，請確認 Obsidian 才是最新）。
-  Obsidian 解析：intro → 00_前言/正文.md；chNN → **/CHNN.md（CH01/02/03/10 有）
+進階：
+  --record-only  只追加修訂紀錄、不動內文（內容沒改、只想留一筆紀錄時用）
+  --status S     覆寫狀態（drafting / published）
 
 用法：
-  python3 scripts/publish-chapter.py <slug> "<變更內容>" [--status drafting|published] [--sync]
+  python3 scripts/publish-chapter.py <slug> "<變更內容>" [--status ...] [--record-only]
 """
 import sys, re, os, glob, datetime
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OBSIDIAN = os.path.expanduser("~/IDreamAIWorks/AI LEAN STARTUP 電子書")
+SRC_DIR = os.path.join(OBSIDIAN, "網站源稿")
 DEST = os.path.join(REPO, "content", "book")
 TODAY = datetime.date.today().isoformat()
 
-INTRO_SRC = "00_前言/正文.md"
-
 
 def resolve_src(slug):
-    if slug == "intro":
-        p = os.path.join(OBSIDIAN, INTRO_SRC)
-        return p if os.path.exists(p) else None
-    m = re.fullmatch(r"ch(\d{2})", slug)
-    if m:
-        hits = glob.glob(os.path.join(OBSIDIAN, "**", f"CH{m.group(1)}.md"), recursive=True)
-        return hits[0] if hits else None
-    return None
+    """挑最高版本號的源稿；找不到回 None。"""
+    hits = glob.glob(os.path.join(SRC_DIR, f"{slug}_網站精修版_v*.md"))
+    if not hits:
+        return None
+    def vnum(p):
+        m = re.search(r"_v(\d+)\.md$", p)
+        return int(m.group(1)) if m else 0
+    return max(hits, key=vnum)
 
 
 def field(fm, key):
@@ -44,18 +49,18 @@ def field(fm, key):
 
 
 def extract_body(raw):
-    raw = re.sub(r'^---\n.*?\n---\n', '', raw, count=1, flags=re.S)  # 源稿 frontmatter
+    raw = re.sub(r'^---\n.*?\n---\n', '', raw, count=1, flags=re.S)  # 源稿 frontmatter（若有）
     raw = raw.lstrip('\n')
-    raw = re.sub(r'^#\s+.*\n+', '', raw, count=1)                    # 頂部 H1
+    raw = re.sub(r'^#\s+.*\n+', '', raw, count=1)                    # 頂部 H1（章名）
     raw = re.sub(r'^---\s*\n+', '', raw, count=1)                    # 起始分隔線
     return raw.strip() + "\n"
 
 
 def main():
-    args = [a for a in sys.argv[1:]]
+    args = sys.argv[1:]
     if len(args) < 2:
         print(__doc__); sys.exit(1)
-    do_sync = "--sync" in args
+    record_only = "--record-only" in args
     status_override = args[args.index("--status") + 1] if "--status" in args else None
     pos = [a for i, a in enumerate(args)
            if not a.startswith("--") and not (i > 0 and args[i - 1] == "--status")]
@@ -80,16 +85,16 @@ def main():
     if rm:
         rev_block = rm.group(1).rstrip("\n") + "\n"
 
-    if do_sync:
-        src = resolve_src(slug)
-        if not src:
-            print(f"❌ --sync 但找不到 {slug} 的 Obsidian 源稿；改用預設 record-only 重跑")
-            sys.exit(1)
-        body = extract_body(open(src, encoding="utf-8").read())
-        synced = f"⚠ 已從 Obsidian 覆蓋內文（{os.path.relpath(src, OBSIDIAN)}）"
-    else:
+    if record_only:
         body = body_old.rstrip("\n") + "\n"
         synced = "record-only（內文未變動，僅記錄修訂）"
+    else:
+        src = resolve_src(slug)
+        if not src:
+            print(f"❌ 找不到 {slug} 的源稿（{SRC_DIR}/{slug}_網站精修版_vN.md）。"
+                  f"\n   若只想記錄修訂、不改內文，請加 --record-only。"); sys.exit(1)
+        body = extract_body(open(src, encoding="utf-8").read())
+        synced = f"已從源稿同步內文（{os.path.basename(src)}）"
 
     new_rev = f'  - date: "{TODAY}"\n    note: "{note}"\n'
     out = (
