@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "WRITING IN PUBLIC",
@@ -7,8 +6,7 @@ export const metadata: Metadata = {
     "用 AI ＋ 你的品味，公開寫出一本能提升個人品牌的電子書。你出品味，AI 出技能。免費領取《WIP 實戰指南》。",
 };
 
-// TODO: 接上 email 名單服務 + 《WIP 實戰指南》下載連結後，替換此佔位連結
-const CLAIM_HREF = "#";
+const CLAIM_HREF = "/wip-guide.pdf";
 
 export default function WritingInPublic() {
   return (
@@ -29,12 +27,14 @@ export default function WritingInPublic() {
       </p>
 
       <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-3">
-        <Link
+        <a
           href={CLAIM_HREF}
+          target="_blank"
+          rel="noopener"
           className="rounded-[var(--radius)] bg-[var(--fg-strong)] px-6 py-3 text-sm font-medium text-[var(--surface)] transition-opacity hover:opacity-85"
         >
           免費領取《WIP 實戰指南》
-        </Link>
+        </a>
         <span className="text-sm text-[var(--muted)]">
           一份把整套方法濃縮成今天就能照做的指南。
         </span>
@@ -108,15 +108,17 @@ export default function WritingInPublic() {
         </h2>
         <p className="prose-zh mx-auto mt-3 max-w-[var(--reading)] text-[var(--muted)]">
           《WIP 實戰指南》把找題目、收素材、建寫作系統、公開發布、養讀者，
-          濃縮成一份你今天就能照做的指南。
+          濃縮成一份你今天就能照做的指南（含每個流程的一流提示詞）。
         </p>
         <div className="mt-7 flex justify-center">
-          <Link
+          <a
             href={CLAIM_HREF}
+            target="_blank"
+            rel="noopener"
             className="rounded-[var(--radius)] bg-[var(--fg-strong)] px-7 py-3 text-sm font-medium text-[var(--surface)] transition-opacity hover:opacity-85"
           >
             免費領取《WIP 實戰指南》
-          </Link>
+          </a>
         </div>
       </section>
 
