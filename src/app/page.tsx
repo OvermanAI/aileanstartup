@@ -29,7 +29,7 @@ export default function Home() {
       <section className="border-b border-[var(--line)] py-16 sm:py-20">
         <p className="flex items-center gap-2">
           <span className="live-mark" />
-          <span className="eyebrow">公開寫作中 · Building in Public</span>
+          <span className="eyebrow">公開寫作中 · Writing in Public</span>
         </p>
 
         <h1 className="mt-6 text-4xl font-semibold leading-[1.1] tracking-tight text-[var(--fg-strong)] sm:text-5xl">

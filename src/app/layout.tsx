@@ -55,7 +55,7 @@ export default function RootLayout({
           <div className="mx-auto w-full max-w-6xl px-6 py-8 text-sm text-[var(--muted)] sm:px-10">
             <p className="flex items-center gap-2">
               <span className="live-mark" />
-              <span className="eyebrow">Building in Public</span>
+              <span className="eyebrow">Writing in Public</span>
             </p>
             <p className="mt-3 text-[var(--fg)]">
               《AI LEAN STARTUP — AI 精實創業》

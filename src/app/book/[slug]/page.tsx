@@ -127,7 +127,7 @@ export default async function ChapterPage({
       <p className="mt-10 flex items-center justify-center gap-2 text-xs text-[var(--metal)]">
         <span className="live-mark" />
         <span className="eyebrow">
-          {STATUS_LABEL[meta.status]} · Building in Public
+          {STATUS_LABEL[meta.status]} · Writing in Public
         </span>
       </p>
     </article>
