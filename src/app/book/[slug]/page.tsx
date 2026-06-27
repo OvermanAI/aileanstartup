@@ -102,6 +102,28 @@ export default async function ChapterPage({
         )}
       </nav>
 
+      {!planned && meta.revisions && meta.revisions.length > 0 && (
+        <section className="mt-14 border-t border-[var(--line)] pt-6">
+          <p className="eyebrow">修訂紀錄 · Changelog</p>
+          <ul className="mt-4 space-y-2.5">
+            {meta.revisions
+              .slice()
+              .reverse()
+              .map((r, i) => (
+                <li
+                  key={i}
+                  className="flex gap-3 text-sm text-[var(--muted)]"
+                >
+                  <span className="shrink-0 font-mono text-xs tabular-nums text-[var(--metal)]">
+                    {r.date}
+                  </span>
+                  <span>{r.note}</span>
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
+
       <p className="mt-10 flex items-center justify-center gap-2 text-xs text-[var(--metal)]">
         <span className="live-mark" />
         <span className="eyebrow">

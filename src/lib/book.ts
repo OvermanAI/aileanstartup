@@ -11,6 +11,8 @@ export type StageMeta = {
   blurb: string;
 };
 
+export type Revision = { date: string; note: string };
+
 export type ChapterMeta = {
   slug: string;
   stage: number;
@@ -21,7 +23,19 @@ export type ChapterMeta = {
   status: ChapterStatus;
   updated?: string;
   hasContent: boolean;
+  revisions?: Revision[]; // 公開修訂紀錄（Writing in Public）
 };
+
+function parseRevisions(v: unknown): Revision[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const list = v
+    .map((r) => {
+      const o = (r ?? {}) as { date?: unknown; note?: unknown };
+      return { date: fmtDate(o.date) ?? "", note: String(o.note ?? "") };
+    })
+    .filter((r) => r.note);
+  return list.length ? list : undefined;
+}
 
 // ── 全書 canonical 結構（即使尚未撰寫，目錄也顯示全貌）──
 export const STAGES: StageMeta[] = [
@@ -84,6 +98,7 @@ export function getChapters(): ChapterMeta[] {
       status,
       updated: fmtDate(data.updated),
       hasContent: Boolean(file),
+      revisions: parseRevisions(data.revisions),
     };
   });
 }
@@ -110,3 +125,23 @@ export const STATUS_LABEL: Record<ChapterStatus, string> = {
   drafting: "草稿中",
   published: "已發布",
 };
+
+// ── 建造日誌：彙整全書每章的修訂紀錄，反時序 ──
+export type BuildLogEntry = {
+  date: string;
+  slug: string;
+  title: string;
+  note: string;
+};
+
+export function getBuildLog(): BuildLogEntry[] {
+  const entries: BuildLogEntry[] = [];
+  for (const c of getChapters()) {
+    if (!c.revisions) continue;
+    for (const r of c.revisions) {
+      entries.push({ date: r.date, slug: c.slug, title: c.title, note: r.note });
+    }
+  }
+  entries.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return entries;
+}

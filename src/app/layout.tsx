@@ -37,6 +37,9 @@ export default function RootLayout({
               <Link href="/book" className="hover:text-[var(--fg-strong)]">
                 目錄
               </Link>
+              <Link href="/log" className="hover:text-[var(--fg-strong)]">
+                日誌
+              </Link>
               <Link href="/about" className="hover:text-[var(--fg-strong)]">
                 關於
               </Link>
