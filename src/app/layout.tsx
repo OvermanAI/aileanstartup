@@ -40,14 +40,14 @@ export default function RootLayout({
               <Link href="/log" className="hover:text-[var(--fg-strong)]">
                 日誌
               </Link>
+              <Link href="/about" className="hover:text-[var(--fg-strong)]">
+                關於
+              </Link>
               <Link
                 href="/writing-in-public"
                 className="hover:text-[var(--fg-strong)]"
               >
                 WRITING IN PUBLIC
-              </Link>
-              <Link href="/about" className="hover:text-[var(--fg-strong)]">
-                關於
               </Link>
             </nav>
           </div>
