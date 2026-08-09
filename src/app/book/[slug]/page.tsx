@@ -3,11 +3,11 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
-import { CANON, getChapter, chapterNeighbors, STATUS_LABEL } from "@/lib/book";
+import { getChapters, getChapter, chapterNeighbors, STATUS_LABEL } from "@/lib/book";
 import StatusBadge from "@/components/StatusBadge";
 
 export function generateStaticParams() {
-  return CANON.map((c) => ({ slug: c.slug }));
+  return getChapters().map((c) => ({ slug: c.slug }));
 }
 
 export async function generateMetadata({
@@ -32,6 +32,7 @@ export default async function ChapterPage({
 
   const { meta, content } = ch;
   const { prev, next } = chapterNeighbors(slug);
+  const written = meta.sections.filter((s) => s.hasContent).length;
   const planned = meta.status === "planned" || !meta.hasContent;
 
   return (
@@ -51,6 +52,11 @@ export default async function ChapterPage({
       <h1 className="mt-5 max-w-[var(--reading)] text-3xl font-semibold leading-[1.25] tracking-tight text-[var(--fg-strong)]">
         {meta.title}
       </h1>
+      {meta.summary && (
+        <p className="mt-3 max-w-[var(--reading)] text-[var(--muted)]">
+          {meta.summary}
+        </p>
+      )}
 
       {meta.status === "drafting" && (
         <p className="mt-5 flex max-w-[var(--reading)] items-start gap-3 rounded-[var(--radius)] border-l-2 border-[var(--accent)] bg-[var(--surface-2)] px-4 py-3 text-sm text-[var(--fg)]">
@@ -61,19 +67,66 @@ export default async function ChapterPage({
         </p>
       )}
 
-      {planned ? (
+      {planned && (
         <div className="mt-10 rounded-[var(--radius)] border border-dashed border-[var(--line-strong)] p-10 text-center text-[var(--muted)]">
           <p className="text-lg font-medium text-[var(--fg-strong)]">即將公開</p>
           <p className="mt-2">{meta.summary}</p>
           <p className="mt-4 text-sm">這一章還在排隊。訂閱後上線會通知你。</p>
         </div>
-      ) : (
+      )}
+
+      {content.trim() && (
         <div className="prose prose-zh prose-neutral mt-8 max-w-[var(--reading)] prose-headings:font-semibold prose-headings:text-[var(--fg-strong)] prose-a:text-[var(--accent-ink)] prose-strong:text-[var(--fg-strong)] prose-pre:rounded-[var(--radius)] prose-pre:bg-[#111111] prose-pre:text-zinc-100">
           <MDXRemote
             source={content}
             options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
           />
         </div>
+      )}
+
+      {meta.sections.length > 0 && (
+        <section className="mt-12">
+          <div className="flex items-baseline justify-between border-b border-[var(--line-strong)] pb-3">
+            <h2 className="text-lg font-normal text-[var(--fg-strong)]">
+              本章小節
+            </h2>
+            <span className="font-mono text-xs tabular-nums text-[var(--metal)]">
+              {written} / {meta.sections.length} 已開寫
+            </span>
+          </div>
+
+          <ol className="divide-y divide-[var(--line)]">
+            {meta.sections.map((s) => (
+              <li key={s.id}>
+                <Link
+                  href={`/book/${meta.slug}/${s.id}`}
+                  className={`block hover:bg-[var(--surface-2)] ${s.hasContent ? "" : "opacity-60"}`}
+                >
+                  <div className="flex items-start justify-between gap-4 py-4">
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-3">
+                        <span className="shrink-0 font-mono text-xs tabular-nums text-[var(--metal)]">
+                          {s.id}
+                        </span>
+                        <span className="font-medium text-[var(--fg-strong)]">
+                          {s.title}
+                        </span>
+                      </div>
+                      <p className="mt-1 pl-[3.25rem] text-sm text-[var(--muted)]">
+                        {s.idea}
+                      </p>
+                    </div>
+                    {!s.hasContent && (
+                      <span className="shrink-0 text-[0.6875rem] text-[var(--metal)]">
+                        未開寫
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
       <nav className="mt-16 flex justify-between gap-4 border-t border-[var(--line)] pt-6 text-sm">
@@ -102,7 +155,7 @@ export default async function ChapterPage({
         )}
       </nav>
 
-      {!planned && meta.revisions && meta.revisions.length > 0 && (
+      {meta.revisions && meta.revisions.length > 0 && (
         <section className="mt-14 border-t border-[var(--line)] pt-6">
           <p className="eyebrow">修訂紀錄 · Changelog</p>
           <ul className="mt-4 space-y-2.5">

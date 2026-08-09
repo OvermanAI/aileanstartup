@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { MDXRemote } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
 import { getBuildLog } from "@/lib/book";
 
 export const metadata: Metadata = {
@@ -25,8 +27,8 @@ export default function BuildLog() {
         這本書怎麼長出來的
       </h1>
       <p className="mt-3 max-w-[var(--reading)] text-[var(--muted)]">
-        公開寫作的意思是：連「改了什麼」都攤開。下面是全書每一次新增與修訂，
-        最新在上。每一條都連到它改動的那一章。
+        公開寫作的意思是：連「改了什麼」都攤開。下面是每一次新增與修訂，最新在上。
+        單章的改動會連到那一章；標「全書」的是結構層級的實戰記錄。
       </p>
 
       {log.length === 0 ? (
@@ -47,25 +49,52 @@ export default function BuildLog() {
                 </span>
               </div>
               <ul className="mt-4 space-y-3">
-                {entries.map((e, i) => (
-                  <li key={i} className="flex gap-3 text-sm">
-                    <Link
-                      href={`/book/${e.slug}`}
-                      className="shrink-0 font-mono text-xs text-[var(--metal)] hover:text-[var(--accent-ink)]"
-                    >
-                      {e.slug}
-                    </Link>
-                    <div>
-                      <span className="text-[var(--fg)]">{e.note}</span>
+                {entries.map((e, i) =>
+                  e.slug ? (
+                    <li key={i} className="flex gap-3 text-sm">
                       <Link
                         href={`/book/${e.slug}`}
-                        className="ml-2 text-[var(--muted)] hover:text-[var(--accent-ink)]"
+                        className="shrink-0 font-mono text-xs text-[var(--metal)] hover:text-[var(--accent-ink)]"
                       >
-                        — {e.title}
+                        {e.slug}
                       </Link>
-                    </div>
-                  </li>
-                ))}
+                      <div>
+                        <span className="text-[var(--fg)]">{e.note}</span>
+                        <Link
+                          href={`/book/${e.slug}`}
+                          className="ml-2 text-[var(--muted)] hover:text-[var(--accent-ink)]"
+                        >
+                          — {e.title}
+                        </Link>
+                      </div>
+                    </li>
+                  ) : (
+                    // 全書層級的實戰記錄：有標題與長文，不掛在任何一章底下
+                    <li key={i}>
+                      <div className="flex gap-3 text-sm">
+                        <span className="shrink-0 font-mono text-xs text-[var(--accent-ink)]">
+                          全書
+                        </span>
+                        <div>
+                          <div className="font-medium text-[var(--fg-strong)]">
+                            {e.title}
+                          </div>
+                          <p className="mt-0.5 text-[var(--fg)]">{e.note}</p>
+                        </div>
+                      </div>
+                      {e.body && (
+                        <div className="prose prose-zh prose-neutral mt-5 max-w-[var(--reading)] pl-[3.25rem] prose-headings:font-semibold prose-headings:text-[var(--fg-strong)] prose-a:text-[var(--accent-ink)] prose-strong:text-[var(--fg-strong)] prose-pre:rounded-[var(--radius)] prose-pre:bg-[#111111] prose-pre:text-zinc-100">
+                          <MDXRemote
+                            source={e.body}
+                            options={{
+                              mdxOptions: { remarkPlugins: [remarkGfm] },
+                            }}
+                          />
+                        </div>
+                      )}
+                    </li>
+                  ),
+                )}
               </ul>
             </section>
           ))}

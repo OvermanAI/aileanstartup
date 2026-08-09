@@ -13,6 +13,18 @@ export type StageMeta = {
 
 export type Revision = { date: string; note: string };
 
+/** 子章節＝一篇獨立文章，本書最小的可編輯與可發布單位。 */
+export type SectionMeta = {
+  chapter: string; // 所屬章目錄，如 "ch01"
+  id: string; // 小節編號，如 "1-1"
+  title: string;
+  idea: string; // 核心觀點，/ideas 頁的來源
+  status: ChapterStatus;
+  origin: string;
+  stage: number;
+  hasContent: boolean;
+};
+
 export type ChapterMeta = {
   slug: string;
   stage: number;
@@ -24,6 +36,7 @@ export type ChapterMeta = {
   updated?: string;
   hasContent: boolean;
   revisions?: Revision[]; // 公開修訂紀錄（Writing in Public）
+  sections: SectionMeta[];
 };
 
 function parseRevisions(v: unknown): Revision[] | undefined {
@@ -37,30 +50,12 @@ function parseRevisions(v: unknown): Revision[] | undefined {
   return list.length ? list : undefined;
 }
 
-// ── 全書 canonical 結構（即使尚未撰寫，目錄也顯示全貌）──
+// ── 全書 canonical 結構 ──
 export const STAGES: StageMeta[] = [
   { n: 1, theme: "第一部", title: "AI 一人公司", blurb: "你 + Agent 軍團 = 一個人等於一家公司" },
   { n: 2, theme: "第二部", title: "AI MVP · 極速上市", blurb: "第一天就上市，先賣再做" },
   { n: 3, theme: "第三部", title: "AI BML · 自動化迭代", blurb: "用 Agent 跑 Build-Measure-Learn，越跑越準" },
   { n: 4, theme: "第四部", title: "AI PMF · 創業關鍵任務", blurb: "找到市場真正要的，打造自動印鈔機" },
-];
-
-type Canon = { slug: string; stage: number; chapter: number; title: string; summary: string };
-
-export const CANON: Canon[] = [
-  { slug: "intro", stage: 0, chapter: 0, title: "前言：吃下 AI 的紅藥丸", summary: "AI 精實創業是作弊碼——讓你直接跳過不需要過的關卡。" },
-  { slug: "ch01", stage: 1, chapter: 1, title: "我的 AI 一人公司", summary: "10 倍收入不靠更努力，靠換掉天花板：用系統取代你一個人的上限。" },
-  { slug: "ch02", stage: 1, chapter: 2, title: "Agent，你的超級員工", summary: "Agent 是第一天就能上工、不累、不抱怨的執行團隊。" },
-  { slug: "ch03", stage: 1, chapter: 3, title: "精實創業：為你的 Agent 加上創業技能", summary: "把精實創業方法裝進 Agent，讓它替你找到會賺錢的題目。" },
-  { slug: "ch04", stage: 2, chapter: 4, title: "第一天就上市（MVP）", summary: "先賣再做，讓市場告訴你要不要繼續——這是最重要的一條規則。" },
-  { slug: "ch05", stage: 2, chapter: 5, title: "用 Agent 免費做出產品", summary: "啟動成本近乎零：用 Agent 一週做出第一個能賣的版本。" },
-  { slug: "ch06", stage: 2, chapter: 6, title: "一次 10 個 MVP 測試市場", summary: "不押注一個想法；同時丟 10 個 MVP，讓數據選出贏家。" },
-  { slug: "ch07", stage: 3, chapter: 7, title: "你是 AI 的老闆", summary: "你出判斷與方向，Agent 出執行——你思考一次，它執行一百次。" },
-  { slug: "ch08", stage: 3, chapter: 8, title: "放手讓 Agent 工作", summary: "Just Agent It：把整包工作交出去，不手癢插手改成果。" },
-  { slug: "ch09", stage: 3, chapter: 9, title: "自主迭代優化的聖杯", summary: "讓 Agent 自己評估、自己修正——系統開始自動變強。" },
-  { slug: "ch10", stage: 4, chapter: 10, title: "直接向客戶收錢", summary: "PMF 的訊號只有一個：陌生人願意付錢。先收錢，再放大。" },
-  { slug: "ch11", stage: 4, chapter: 11, title: "用 Agent 幫你賺錢", summary: "把獲客、成交、交付一條條變成 Agent 工作流，自動跑。" },
-  { slug: "ch12", stage: 4, chapter: 12, title: "打造一台自動印鈔機", summary: "找到那條值得放大的路，讓系統 24/7 全速去跑。" },
 ];
 
 const CONTENT_DIR = path.join(process.cwd(), "content", "book");
@@ -71,44 +66,111 @@ function fmtDate(v: unknown): string | undefined {
   return String(v);
 }
 
-function readFileFor(slug: string): { data: Record<string, unknown>; content: string } | null {
-  for (const ext of [".mdx", ".md"]) {
-    const p = path.join(CONTENT_DIR, slug + ext);
-    if (fs.existsSync(p)) {
-      const raw = fs.readFileSync(p, "utf8");
-      const { data, content } = matter(raw);
-      return { data, content };
-    }
-  }
-  return null;
+function readMdx(p: string) {
+  if (!fs.existsSync(p)) return null;
+  const { data, content } = matter(fs.readFileSync(p, "utf8"));
+  return { data: data as Record<string, unknown>, content };
+}
+
+/** 小節編號排序：取破折號後的數字，1-2 要排在 1-10 前面。 */
+function sectionRank(id: string): number {
+  const n = Number(id.split("-")[1]);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function readSections(dir: string, stage: number): SectionMeta[] {
+  const dirPath = path.join(CONTENT_DIR, dir);
+  if (!fs.existsSync(dirPath)) return [];
+  return fs
+    .readdirSync(dirPath)
+    .filter((f) => f.endsWith(".mdx") && f !== "_index.mdx")
+    .map((f) => {
+      const file = readMdx(path.join(dirPath, f))!;
+      const d = file.data;
+      return {
+        chapter: dir,
+        id: (d.section as string) ?? f.replace(/\.mdx$/, ""),
+        title: (d.title as string) ?? "",
+        idea: (d.idea as string) ?? "",
+        status: (d.status as ChapterStatus) ?? "drafting",
+        origin: (d.origin as string) ?? "",
+        stage,
+        hasContent: file.content.trim().length > 0,
+      };
+    })
+    .sort((a, b) => sectionRank(a.id) - sectionRank(b.id));
+}
+
+/** 章的狀態由它的小節推導：全空＝規劃中，有寫＝草稿中，全發布＝已發布。 */
+function deriveStatus(sections: SectionMeta[], fallback: ChapterStatus): ChapterStatus {
+  if (!sections.length) return fallback;
+  if (sections.every((s) => s.status === "planned")) return "planned";
+  if (sections.every((s) => s.status === "published")) return "published";
+  return "drafting";
 }
 
 export function getChapters(): ChapterMeta[] {
-  return CANON.map((c, i) => {
-    const file = readFileFor(c.slug);
-    const data = (file?.data ?? {}) as Record<string, unknown>;
-    const status = (data.status as ChapterStatus) ?? (file ? "drafting" : "planned");
-    return {
-      slug: c.slug,
-      stage: c.stage,
-      chapter: c.chapter,
-      order: i,
-      title: (data.title as string) ?? c.title,
-      summary: (data.summary as string) ?? c.summary,
-      status,
-      updated: fmtDate(data.updated),
-      hasContent: Boolean(file),
-      revisions: parseRevisions(data.revisions),
-    };
-  });
+  if (!fs.existsSync(CONTENT_DIR)) return [];
+
+  const chapters = fs
+    .readdirSync(CONTENT_DIR, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => {
+      const idx = readMdx(path.join(CONTENT_DIR, e.name, "_index.mdx"));
+      const d = (idx?.data ?? {}) as Record<string, unknown>;
+      const stage = Number(d.stage ?? 0);
+      const sections = readSections(e.name, stage);
+      const fallbackStatus: ChapterStatus = idx ? "drafting" : "planned";
+      return {
+        slug: e.name,
+        stage,
+        chapter: Number(d.order ?? 0),
+        order: 0,
+        title: (d.title as string) ?? e.name,
+        summary: (d.summary as string) ?? "",
+        status: deriveStatus(sections, fallbackStatus),
+        updated: fmtDate(d.updated),
+        hasContent: Boolean(idx?.content.trim()) || sections.some((s) => s.hasContent),
+        revisions: parseRevisions(d.revisions),
+        sections,
+      } satisfies ChapterMeta;
+    })
+    .sort((a, b) => a.stage - b.stage || a.chapter - b.chapter);
+
+  chapters.forEach((c, i) => (c.order = i));
+  return chapters;
 }
 
 export function getChapter(slug: string): { meta: ChapterMeta; content: string } | null {
-  const chapters = getChapters();
-  const meta = chapters.find((c) => c.slug === slug);
+  const meta = getChapters().find((c) => c.slug === slug);
   if (!meta) return null;
-  const file = readFileFor(slug);
-  return { meta, content: file?.content ?? "" };
+  const idx = readMdx(path.join(CONTENT_DIR, slug, "_index.mdx"));
+  return { meta, content: idx?.content ?? "" };
+}
+
+export function getSection(
+  chapterSlug: string,
+  sectionId: string,
+): { meta: SectionMeta; chapter: ChapterMeta; content: string } | null {
+  const chapter = getChapters().find((c) => c.slug === chapterSlug);
+  const meta = chapter?.sections.find((s) => s.id === sectionId);
+  if (!chapter || !meta) return null;
+  const file = readMdx(path.join(CONTENT_DIR, chapterSlug, `${sectionId}.mdx`));
+  return { meta, chapter, content: file?.content ?? "" };
+}
+
+/** 全書小節的線性閱讀順序——上一篇／下一篇會跨章。 */
+export function getAllSections(): SectionMeta[] {
+  return getChapters().flatMap((c) => c.sections);
+}
+
+export function sectionNeighbors(chapterSlug: string, sectionId: string) {
+  const all = getAllSections();
+  const i = all.findIndex((s) => s.chapter === chapterSlug && s.id === sectionId);
+  return {
+    prev: i > 0 ? all[i - 1] : null,
+    next: i >= 0 && i < all.length - 1 ? all[i + 1] : null,
+  };
 }
 
 export function chapterNeighbors(slug: string) {
@@ -126,16 +188,38 @@ export const STATUS_LABEL: Record<ChapterStatus, string> = {
   published: "已發布",
 };
 
-// ── 建造日誌：彙整全書每章的修訂紀錄，反時序 ──
+// ── 建造日誌：章的修訂紀錄 ＋ 全書層級的實戰記錄，反時序 ──
 export type BuildLogEntry = {
   date: string;
-  slug: string;
+  slug?: string; // 改動的那一章；沒有＝全書層級
   title: string;
   note: string;
+  body?: string; // 長篇實戰記錄（Markdown），只有全書層級會有
 };
 
+const LOG_DIR = path.join(process.cwd(), "content", "log");
+
+/** 全書層級的實戰記錄：content/log/<日期>-<主題>.md，一個檔一筆。 */
+function getSiteLog(): BuildLogEntry[] {
+  if (!fs.existsSync(LOG_DIR)) return [];
+  return fs
+    .readdirSync(LOG_DIR)
+    .filter((f) => f.endsWith(".md") || f.endsWith(".mdx"))
+    .map((f) => {
+      const file = readMdx(path.join(LOG_DIR, f))!;
+      const d = file.data;
+      return {
+        date: fmtDate(d.date) ?? "",
+        title: (d.title as string) ?? "",
+        note: (d.note as string) ?? "",
+        body: file.content.trim() || undefined,
+      };
+    })
+    .filter((e) => e.date && e.note);
+}
+
 export function getBuildLog(): BuildLogEntry[] {
-  const entries: BuildLogEntry[] = [];
+  const entries: BuildLogEntry[] = getSiteLog();
   for (const c of getChapters()) {
     if (!c.revisions) continue;
     for (const r of c.revisions) {
